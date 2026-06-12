@@ -1,0 +1,34 @@
+cabal-version:      2.4
+name:               cauchy-oracle
+version:            0.1.0.0
+synopsis:           Differential-testing harness against external referees
+description:        The single mechanism consumed by every phase of the
+                    cauchy family: random generation, referee call,
+                    comparison, shrinking, report. Referees are first-class
+                    values - in-library (poly, a regex engine) or
+                    out-of-process (Singular, Sage, numpy).
+license:            BSD-3-Clause
+author:             nrolland
+maintainer:         nrolland
+build-type:         Simple
+category:           Testing
+
+library
+  exposed-modules:  Test.Cauchy.Oracle
+  hs-source-dirs:   src
+  build-depends:    base >=4.14 && <5,
+                    QuickCheck >=2.14,
+                    process >=1.6,
+                    directory >=1.3
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite smoke
+  type:             exitcode-stdio-1.0
+  main-is:          Smoke.hs
+  hs-source-dirs:   test
+  build-depends:    base,
+                    cauchy-oracle,
+                    QuickCheck
+  default-language: Haskell2010
+  ghc-options:      -Wall
