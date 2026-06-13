@@ -63,9 +63,7 @@ x = Poly (MS.dirac (Sum 1) one)
 -- Le terme de tête est le sujet de ③ — l'ordre total de ℕ le fournit
 -- (la lecture du maximum, autorisée par le contrat de @Ord m@).
 leading :: Poly s -> Maybe (Natural, s)
-leading (Poly f) = case MS.toList f of
-  [] -> Nothing
-  ts -> let (Sum d, c) = last ts in Just (d, c)
+leading (Poly f) = (\(Sum d, c) -> (d, c)) <$> MS.lookupMax f
 
 -- | @eval p a@ : l'unique morphisme S[x] → S envoyant x sur a (①),
 -- par schéma de Horner sur les coefficients denses.

@@ -23,9 +23,11 @@ source-repository head
 
 library
   exposed-modules:  Data.Cauchy.Poly,
-                    Data.Cauchy.Series
+                    Data.Cauchy.Series,
+                    Data.Cauchy.Multi
   hs-source-dirs:   src
   build-depends:    base >=4.14 && <5,
+                    cauchy-order,
                     infinite-list >=0.1 && <0.2,
                     monoid-semiring,
                     semirings >=0.7 && <0.8
@@ -45,5 +47,22 @@ test-suite duels
                     poly >=0.5,
                     mod,
                     vector
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite multi-duels
+  type:             exitcode-stdio-1.0
+  main-is:          MultiDuels.hs
+  other-modules:    MultiShowcase,
+                    SingularRef
+  hs-source-dirs:   test
+  build-depends:    base,
+                    cauchy-poly,
+                    cauchy-order,
+                    cauchy-oracle,
+                    containers,
+                    QuickCheck >=2.14,
+                    semirings,
+                    mod
   default-language: Haskell2010
   ghc-options:      -Wall

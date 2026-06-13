@@ -1,0 +1,56 @@
+cabal-version:      2.4
+name:               cauchy-language
+version:            0.1.0.0
+synopsis:           Languages and weighted automata over Sigma* (phase 2)
+description:        The free-monoid layer of the cauchy family: S<Sigma> as
+                    the monoid semiring over Sigma* - the free algebra on
+                    Sigma without commutation between generators - S<<Sigma>>
+                    as its completion carrying the head/tail destructor
+                    (nu, delta), rational expressions filtered by Brzozowski
+                    derivatives, and M_n(S) where the Kleene star solves the
+                    Bellman equations. The contract is the eleven CONTRAT
+                    lines of explainer pages 1-4; the duels test-suite
+                    realizes them against set-theoretic concatenation, direct
+                    coefficients, hand-written language semantics,
+                    Bellman-Ford and dynamic programming.
+license:            BSD-3-Clause
+author:             nrolland
+maintainer:         nrolland
+build-type:         Simple
+category:           Math
+tested-with:        GHC ==9.6.7
+
+source-repository head
+  type:     git
+  location: https://github.com/nrolland/cauchy-haskell
+  subdir:   cauchy-language
+
+library
+  exposed-modules:  Data.Cauchy.Language.Poly,
+                    Data.Cauchy.Language.Series,
+                    Data.Cauchy.Language.Rational,
+                    Data.Cauchy.Language.Weighted
+  hs-source-dirs:   src
+  build-depends:    base >=4.14 && <5,
+                    containers >=0.6 && <0.8,
+                    finite-typelits >=0.1 && <0.3,
+                    free >=5.2 && <5.3,
+                    monoid-semiring,
+                    semirings >=0.7 && <0.8,
+                    vector-sized >=1.6 && <1.7
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  other-modules:    Showcase
+  hs-source-dirs:   test
+  build-depends:    base,
+                    cauchy-language,
+                    cauchy-oracle,
+                    QuickCheck >=2.14,
+                    regex-applicative >=0.3 && <0.4,
+                    semirings
+  default-language: Haskell2010
+  ghc-options:      -Wall

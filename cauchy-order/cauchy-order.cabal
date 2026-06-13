@@ -1,0 +1,43 @@
+cabal-version:      2.4
+name:               cauchy-order
+version:            0.1.0.0
+synopsis:           Monomial orders on N^k (phase 3)
+description:        The order layer of the cauchy family: multi-exponents
+                    N^k with k at the type level, and the three monomial
+                    orders lex, grlex, grevlex as index newtypes - the free
+                    Ord parameter that the monoid-semiring contract declares,
+                    finally consumed. The contract is the admissibility lines
+                    of explainer page 2: totality, compatibility with
+                    addition, zero minimal (hence well-foundedness, by
+                    Dickson), coincidence with <= at k = 1, and separation
+                    witnesses at k = 2 and k = 3.
+license:            BSD-3-Clause
+author:             nrolland
+maintainer:         nrolland
+build-type:         Simple
+category:           Math
+tested-with:        GHC ==9.6.7
+
+source-repository head
+  type:     git
+  location: https://github.com/nrolland/cauchy-haskell
+  subdir:   cauchy-order
+
+library
+  exposed-modules:  Data.Cauchy.Order
+  hs-source-dirs:   src
+  build-depends:    base >=4.14 && <5
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  hs-source-dirs:   test
+  build-depends:    base,
+                    cauchy-order,
+                    cauchy-oracle,
+                    QuickCheck >=2.14,
+                    quickcheck-classes-base >=0.6
+  default-language: Haskell2010
+  ghc-options:      -Wall

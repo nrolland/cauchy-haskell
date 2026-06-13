@@ -50,6 +50,7 @@ module Data.MonoidSemiring
   , dirac
   , coefficient
   , support
+  , lookupMax
   , scale
   , filterIndex
   ) where
@@ -90,6 +91,12 @@ coefficient m (MS f) = Map.findWithDefault zero m f
 -- | The indices carrying a non-'zero' coefficient, ascending.
 support :: MonoidSemiring m s -> [m]
 support (MS f) = Map.keys f
+
+-- | The maximum of the support with its coefficient, 'Nothing' for
+-- zero — the O(log n) reading that the @Ord m@ contract grants to
+-- maximum-based machinery (leading terms, in a multivariate layer).
+lookupMax :: MonoidSemiring m s -> Maybe (m, s)
+lookupMax (MS f) = Map.lookupMax f
 
 -- SNIPPET:convolution
 instance (Ord m, Monoid m, Semiring s, Eq s)

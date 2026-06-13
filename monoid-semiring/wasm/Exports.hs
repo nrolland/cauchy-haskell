@@ -8,6 +8,8 @@ module Exports () where
 import GHC.Wasm.Prim
 
 import WidgetData
+import qualified GroebnerWidgets
+import qualified MultiWidgets
 import qualified SeriesWidgets
 
 foreign export javascript "fibPrefix"
@@ -54,3 +56,40 @@ foreign export javascript "seriesLog"
 
 seriesLog :: Int -> JSString
 seriesLog k = toJSString (SeriesWidgets.logJson k)
+
+-- Vitrine des ordres (cauchy-order + multivarié de cauchy-poly) :
+-- énumération du support le long d'un type d'indice, curryfication,
+-- division — calculées par la bibliothèque elle-même.
+
+foreign export javascript "multiBalayage"
+  multiBalayage :: Int -> JSString
+
+multiBalayage :: Int -> JSString
+multiBalayage n = toJSString (MultiWidgets.balayageJson n)
+
+foreign export javascript "multiIterate"
+  multiIterate :: Int -> JSString
+
+multiIterate :: Int -> JSString
+multiIterate vue = toJSString (MultiWidgets.iterateJson vue)
+
+foreign export javascript "multiDivision"
+  multiDivision :: Int -> JSString
+
+multiDivision :: Int -> JSString
+multiDivision v = toJSString (MultiWidgets.divisionJson v)
+
+-- Vitrine des bases de Gröbner (cauchy-groebner) : la complétion de l'arc
+-- et les bases réduites avec leurs coupes, calculées par la bibliothèque.
+
+foreign export javascript "groebnerBuchberger"
+  groebnerBuchberger :: Int -> JSString
+
+groebnerBuchberger :: Int -> JSString
+groebnerBuchberger n = toJSString (GroebnerWidgets.buchbergerJson n)
+
+foreign export javascript "groebnerCut"
+  groebnerCut :: Int -> JSString
+
+groebnerCut :: Int -> JSString
+groebnerCut n = toJSString (GroebnerWidgets.cutJson n)

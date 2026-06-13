@@ -1,0 +1,77 @@
+cabal-version:      2.4
+name:               cauchy-backends
+version:            0.1.0.0
+synopsis:           Fast backends: NTT convolution and F4 (phase 5)
+description:        The fast-path layer of the cauchy family. Same
+                    answers, faster: a second path to the same value is
+                    first a theorem, then a contract. For convolution
+                    the theorem is the transform isomorphism (S[x]/(xⁿ−1)
+                    ≅ Sⁿ under a principal n-th root), the radix-2
+                    recursion cuts it to (n/2)·log₂n products, and ℤ is
+                    recovered by NTT over primes ℓ = c·2ᵉ + 1 plus the
+                    Chinese remainder theorem under a verified bound. For
+                    Gröbner the theorem is the equivalence between a row
+                    operation of Gaussian elimination and a division step
+                    (F4); the reduced basis being unique (phase 4) makes
+                    the F4/Buchberger duel well-posed. The slow path,
+                    validated across four phases of external oracles,
+                    becomes the referee of the fast path: equality is
+                    demanded bit for bit. The duels test-suite realizes
+                    the thirteen CONTRAT lines of explainer pages 1-4.
+license:            BSD-3-Clause
+author:             nrolland
+maintainer:         nrolland
+build-type:         Simple
+category:           Math
+tested-with:        GHC ==9.6.7
+
+source-repository head
+  type:     git
+  location: https://github.com/nrolland/cauchy-haskell
+  subdir:   cauchy-backends
+
+library
+  exposed-modules:  Data.Cauchy.Backends
+  hs-source-dirs:   src
+  build-depends:    base >=4.14 && <5,
+                    cauchy-order,
+                    cauchy-poly,
+                    -- ④ : reduce (canoniseur de la base, volet 4) ; f4core
+                    -- — l'échelonnage de Macaulay — reste maison, in-paquet.
+                    cauchy-groebner,
+                    containers,
+                    -- ③ : ℤ/ℓ à modulo typé (porte d'écosystème, 2026-06-13).
+                    -- L'arithmétique modulaire de convolveZ ; invertMod
+                    -- (total) donne ω⁻¹ et n⁻¹. Socle commun avec semirings.
+                    mod >=0.2 && <0.3,
+                    semirings >=0.7 && <0.8
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  -- SingularGroebner réutilisé tel quel depuis la phase 4 (note
+  -- d'entrée §1 : « zéro ligne nouvelle de harnais » — le duel décisif
+  -- du volet 4 rejoué avec F4). Source dir additif, aucune retouche au
+  -- paquet cauchy-groebner (note d'entrée §5).
+  other-modules:    SingularGroebner
+  hs-source-dirs:   test, ../cauchy-groebner/test
+  build-depends:    base,
+                    cauchy-backends,
+                    cauchy-groebner,
+                    cauchy-poly,
+                    cauchy-order,
+                    cauchy-oracle,
+                    containers,
+                    -- ① ② porteur ℤ/m du harnais (porte d'écosystème) :
+                    -- Mod 17 / Mod 15 remplacent le Zn vendorié du rouge.
+                    mod >=0.2 && <0.3,
+                    process,
+                    QuickCheck >=2.14,
+                    semirings
+  default-language: Haskell2010
+  -- -threaded : le duel décisif de ④ rejoue Singular (FFI) ; sans le RTS
+  -- fileté, le filet CAUCHY_ORACLE_DUEL_TIMEOUT ne peut pas interrompre un
+  -- sous-processus pendu (cf. cauchy-oracle:borne, 1ᵉʳ angle mort).
+  ghc-options:      -Wall -threaded
