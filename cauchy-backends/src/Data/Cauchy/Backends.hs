@@ -75,6 +75,8 @@ pow w e = foldr times one (replicate e w)
 -- la consomme : ω, son inverse, l'inverse de n dans le porteur, et n.
 -- Qui connaît le porteur (un corps 𝔽_ℓ, l'anneau ℤ/m) la construit ;
 -- la transformée n'exige du porteur qu'un 'Semiring'.
+-- SNIPPET:backends-root
+-- NOTE:Semiring: le porteur n'exige qu'un semi-anneau — ni corps ni même soustraction ; ω, ω⁻¹, n⁻¹ viennent de 'Root', construits par qui connaît le porteur (𝔽_ℓ, ℤ/m). La principalité de ω n'est PAS dans le type — elle est jugée par l'oracle (témoin ℤ/15)
 data Root a = Root
   { rootOmega    :: a   -- ^ ω, racine principale n-ième de l'unité
   , rootInvOmega :: a   -- ^ ω⁻¹
@@ -102,6 +104,7 @@ idft r v =
   where wInv = rootInvOmega r
         invN = rootInvOrder r
         n    = rootOrder r
+-- END:backends-root
 
 -- ---------------------------------------------------------------------
 -- ② La FFT : la racine principale divise le calcul.
@@ -121,6 +124,8 @@ intt r = map (rootInvOrder r `times`) . fft (rootInvOmega r) (rootOrder r)
 -- sorties comme E[k] + ω^k·O[k] et E[k] + ω^{k+n/2}·O[k], la périodicité
 -- E[k+n/2] = E[k] (vraie quand ω^n = 1) faisant le reste. Égale 'dft'
 -- bit à bit sur une racine principale (② : ntt ≡ dft).
+-- SNIPPET:backends-fft
+-- NOTE:plus: pas de soustraction — le porteur n'est qu'un 'Semiring' ; le papillon écrit les deux sorties comme E[k] + ω^k·O[k] et E[k] + ω^{k+n/2}·O[k], la périodicité E[k+n/2] = E[k] (vraie quand ω^n = 1) tenant lieu du signe
 fft :: Semiring a => a -> Int -> [a] -> [a]
 fft _ 1 v = v
 fft w n v = lo ++ hi
@@ -136,6 +141,7 @@ fft w n v = lo ++ hi
     evens xs           = xs
     odds  (_ : y : xs) = y : odds xs
     odds  _            = []
+-- END:backends-fft
 
 -- | La convolution cyclique par le chemin transformé :
 -- @intt r (ntt r p ⊙ ntt r q)@, les deux entrées de longueur n =
@@ -159,11 +165,14 @@ data Counts = Counts
 -- papillon est un produit (ω^k·O[k]) et deux sommes (les deux sorties).
 -- La forme close (n/2)·log₂ n et n·log₂ n en tombe — l'égalité, non la
 -- borne, est le contrat (② compte exact).
+-- SNIPPET:backends-count
+-- NOTE:products: compteur tenu /en phase/ avec 'fft' : à chaque niveau h = n/2 papillons, un produit et deux sommes chacun ; la forme close (n/2)·log₂n et n·log₂n en tombe — l'égalité, non la borne, est le contrat
 nttCount :: Int -> Counts
 nttCount 1 = Counts 0 0
 nttCount n = Counts (2 * products sub + h) (2 * additions sub + 2 * h)
   where h   = n `div` 2
         sub = nttCount h
+-- END:backends-count
 
 -- ---------------------------------------------------------------------
 -- ③ L'arithmétique exacte : le corps choisi pour sa racine.
@@ -217,6 +226,9 @@ convolveZ = convolveZWith nttPrimes
 -- | 'convolveZ' paramétrée par le jeu de premiers NTT (injecté plutôt que
 -- figé : le garde de capacité est ainsi témoignable sur un premier
 -- synthétique à petit @e@, sans payer une transformée de taille n > 2^23).
+-- SNIPPET:backends-crt
+-- NOTE:filter: le garde de capacité — ℓ = c·2^e+1 n'admet de racine principale d'ordre n que si n ≤ 2^e ; au-delà 'rootMod' effondre ω à 1 (division entière 2^e `div` n = 0) et ses résidus mod ℓ sont faux. Écarter ces premiers restreint 'covered' ; la borne needed > covered garde alors magnitude ET capacité d'un seul tenant
+-- NOTE:crt: restes chinois à résidu /symétrique/, ramené dans (−M/2, M/2] ; la borne vérifiée (covered impair, needed pair ⇒ jamais égaux) garantit |coefficient vrai| < M/2, levant l'ambiguïté de signe
 convolveZWith :: [NttPrime] -> [Integer] -> [Integer]
               -> Either BoundError [Integer]
 convolveZWith ps as bs
@@ -248,6 +260,7 @@ convolveZWith ps as bs
                 [ r * mi * modpow mi (l - 2) l
                 | (l, r) <- pairs, let mi = bigM `div` l ]
       in if 2 * x > bigM then x - bigM else x
+-- END:backends-crt
 
 -- | La convolution cyclique de @as@, @bs@ (rembourrés à n = 2^e) modulo
 -- le premier @p@, par 'convolve' sur le porteur 'Mod ℓ' — le modulo
@@ -267,6 +280,9 @@ convolveModPrime p n as bs =
 -- | La racine d'ordre n = 2^d (d ≤ e) sur 'Mod ℓ', dérivée de la racine
 -- d'ordre 2^e du premier : ω_n = (racine principale)^{2^e / n}. Les
 -- inverses ω⁻¹ et n⁻¹ par 'invertMod' (total — corrects car ℓ premier).
+-- SNIPPET:backends-rootmod
+-- NOTE:div: si n > 2^e cette division entière vaut 0 et ω s'effondre à 1 — la racine n'existe pas ; c'est l'effondrement que le filtre de capacité de 'convolveZWith' prévient en amont, hors de cette fonction
+-- NOTE:invertMod: ℓ premier ⇒ 𝔽_ℓ corps ⇒ 'invertMod' total et correct (ω⁻¹, n⁻¹) ; sur un composite il échouerait — la primalité est l'hypothèse, jugée par l'oracle d'ordre des racines
 rootMod :: forall q. KnownNat q => NttPrime -> Int -> Root (Mod q)
 rootMod p n = Root w (inv w) (inv (fromIntegral n)) n
   where
@@ -275,6 +291,7 @@ rootMod p n = Root w (inv w) (inv (fromIntegral n)) n
     inv x = case invertMod x of
       Just y  -> y
       Nothing -> error "cauchy-backends : rootMod — élément non inversible mod ℓ"
+-- END:backends-rootmod
 
 -- | La plus petite puissance de deux ≥ k.
 nextPow2 :: Int -> Int
@@ -296,8 +313,12 @@ modpow b e m
 -- 'Data.Cauchy.Groebner.buchberger' puis 'reduce' — la base réduite
 -- étant unique (volet 4), l'égalité ensemble contre ensemble est le
 -- contrat.
+-- SNIPPET:backends-f4
+-- NOTE:Field: S corps — l'échelonnage pivote (monicB inverse le coefficient de tête) ; l'hypothèse de tout l'arc Gröbner, reconduite
+-- NOTE:reduce: f4 = reduce ∘ f4core ; 'reduce' (volet 4) canonise la base — unique à ordre fixé, donc l'égalité ensemble contre ensemble avec Buchberger est bien posée, insensible au chemin de chacun
 f4 :: (MonomialOrder o, Field s, Ring s, Eq s) => [MPoly o s] -> [MPoly o s]
 f4 fs = reduce (f4core [ f | f <- fs, f /= zero ])
+-- END:backends-f4
 
 -- | F4 (Faugère) : la complétion par échelonnage de matrices de
 -- Macaulay. Sélection normale (le plus petit degré de coin d'abord) ;
@@ -414,6 +435,9 @@ symbolic g rows0 = go rows0 done0 (mons rows0 `Set.difference` done0)
 -- pivots de même tête, puis devient le pivot de sa tête (neuve) ou
 -- s'annule (S-polynôme réduit à 0, ligne nulle qui disparaît). /Une
 -- opération de ligne est un pas de la division/ (④).
+-- SNIPPET:backends-echelon
+-- NOTE:reduceRow: une opération de ligne EST un pas de la division (volet 3) : r ← r − c·p, p unitaire ; la passe avant échelonne par tête ≻ décroissante, chaque ligne réduite contre les pivots de même tête
+-- NOTE:backReduce: passe arrière (Gauss–Jordan) — chaque colonne-pivot effacée du reste des lignes ; les pivots deviennent pleinement réduits (forme échelonnée réduite). Sans elle les queues s'accumulent et les coefficients sur ℚ explosent
 echelon :: forall o s. (MonomialOrder o, Field s, Ring s, Eq s)
         => [MPoly o s] -> [MPoly o s]
 echelon rows = Map.elems (backReduce forward)
@@ -447,6 +471,7 @@ echelon rows = Map.elems (backReduce forward)
                              else q `plus` scaleS (negate c) p) acc
     leadIs m q = (fst <$> leading q) == Just m
     scaleS k p = fromTerms [ (mm, k `times` cc) | (mm, cc) <- toTerms p ]
+-- END:backends-echelon
 
 -- | Le monôme de tête (exposant) d'un polynôme non nul.
 lmExp :: MonomialOrder o => MPoly o s -> Exp (Arity o)
@@ -474,6 +499,8 @@ shiftBy e p = fromTerms [(fromExp e, one)] `times` p
 -- | La forme normale par échelonnage : une opération de ligne est un
 -- pas de la division du volet 3. Même valeur que
 -- 'Data.Cauchy.Groebner.nf' sur la même liste.
+-- SNIPPET:backends-nf
+-- NOTE:E.quot: S corps — annuler une tête inverse son coefficient de tête (via E.quot) ; l'hypothèse de l'arc Gröbner, reconduite. Chaque pas f ← f − (x^{m−lt d}·c/lc d)·d est une opération de ligne, la tête s'annule
 nfF4 :: (MonomialOrder o, Field s, Ring s, Eq s)
      => MPoly o s -> [MPoly o s] -> MPoly o s
 nfF4 p g = go p zero
@@ -494,3 +521,4 @@ nfF4 p g = go p zero
       [ (d, e, lcd)
       | d <- g', Just (lmd, lcd) <- [leading d]
       , Just e <- [me `minus` toExp lmd] ]
+-- END:backends-nf

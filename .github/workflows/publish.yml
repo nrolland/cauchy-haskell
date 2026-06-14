@@ -1,0 +1,33 @@
+name: build
+
+# CI du dépôt public cauchy-haskell (forme de release fusionnée à 3 paquets).
+# Déposée par fuse.mjs au moment de la publication ; jamais éditée à la main
+# dans le dépôt public. Prouve que la forme publiée build et teste vert, et
+# sert de détecteur de dérive des gabarits.
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Référents Singular + numpy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y singular python3-numpy
+
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6'
+          cabal-version: '3.12'
+
+      - name: Build + test (3 paquets)
+        env:
+          CAUCHY_ORACLE_SINGULAR: '1'
+          CAUCHY_ORACLE_NUMPY: '1'
+        run: |
+          cabal update
+          cabal build all
+          cabal test all --test-show-details=direct

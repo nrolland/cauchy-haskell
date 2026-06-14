@@ -13,7 +13,7 @@ homepage:           https://github.com/nrolland/cauchy-haskell
 bug-reports:        https://github.com/nrolland/cauchy-haskell/issues
 build-type:         Simple
 category:           Math
-tested-with:        GHC ==9.6.7
+tested-with:        GHC ==9.12.4
 extra-source-files: test/data/*.txt
 extra-doc-files:    CHANGELOG.md
 

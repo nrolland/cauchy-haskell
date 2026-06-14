@@ -24,6 +24,7 @@ module Test.Cauchy.Oracle
   , CertDuel(..)
   , certProperty
   , runCertDuel
+  , runCertDuelWith
     -- * Le duel par lots (la question au référent, réifiée)
   , BatchDuel(..)
   , runBatchDuel
@@ -49,17 +50,21 @@ import Text.Printf (printf)
 import Text.Read (readMaybe)
 
 -- SNIPPET:oracle-referee
--- | Le référent : un nom (celui du rapport) et un appel. Un référent en
--- bibliothèque (@poly@) est pur ; un outil externe (Singular) passe par
--- un processus — le type ne distingue pas, c'est le point.
+-- | Le référent : un nom (celui du rapport), les exécutables externes
+-- qu'il requiert, et un appel. Un référent en bibliothèque (@poly@) est
+-- pur — @refExes@ vide ; un outil externe (Singular) passe par un
+-- processus — le type ne distingue pas l'appel, mais @refExes@ rend la
+-- dépendance externe /inspectable/ : un coureur peut sauter en vert un
+-- duel dont le binaire est absent, au lieu d'échouer en profondeur.
 data Referee i r = Referee
   { refName :: String
+  , refExes :: [String]   -- ^ exécutables candidats requis ; @[]@ = référent pur
   , refCall :: i -> IO r
   }
 
--- | Référent en bibliothèque.
+-- | Référent en bibliothèque : pur, aucun exécutable requis.
 pureReferee :: String -> (i -> r) -> Referee i r
-pureReferee n f = Referee n (pure . f)
+pureReferee n f = Referee n [] (pure . f)
 -- END:oracle-referee
 
 -- | Référent hors processus : rendre l'entrée en script, appeler l'outil,
@@ -73,7 +78,7 @@ processReferee
   -> (i -> String)                -- ^ entrée → stdin
   -> (String -> Either String r)  -- ^ stdout → résultat
   -> Referee i r
-processReferee n exes args render parse = Referee n call
+processReferee n exes args render parse = Referee n exes call
   where
     call i = do
       exe <- firstExecutable exes
@@ -84,11 +89,35 @@ processReferee n exes args render parse = Referee n call
         ExitSuccess ->
           either (\m -> fail (n ++ " : analyse — " ++ m)) pure (parse out)
 
+-- | Le premier des candidats présent sur le @PATH@, s'il y en a un.
+firstAvailable :: [String] -> IO (Maybe FilePath)
+firstAvailable []       = pure Nothing
+firstAvailable (e : es) = findExecutable e >>= maybe (firstAvailable es) (pure . Just)
+
+-- | Le premier exécutable présent ; échoue bruyamment si aucun. Le
+-- pré-vol 'skipIfAbsent' des coureurs évite normalement d'atteindre ce
+-- @fail@ — il reste comme filet pour un référent consulté hors coureur.
 firstExecutable :: [String] -> IO FilePath
-firstExecutable names = go names
-  where
-    go []       = fail ("aucun exécutable parmi : " ++ intercalate ", " names)
-    go (e : es) = findExecutable e >>= maybe (go es) pure
+firstExecutable names =
+  firstAvailable names >>=
+    maybe (fail ("aucun exécutable parmi : " ++ intercalate ", " names)) pure
+
+-- | Pré-vol d'un duel : si son référent exige des exécutables externes et
+-- qu'aucun n'est sur le @PATH@, le duel rend un @SKIP@ vert nommé au lieu
+-- d'échouer — un référent absent est une /information/, pas une panne
+-- (troisième cas de la même règle que @CAUCHY_ORACLE_MATCH@ et
+-- @CAUCHY_ORACLE_DUEL_TIMEOUT@ : tout obstacle d'environnement devient un
+-- verdict nommé). La garde ne porte QUE sur l'absence du binaire ; un
+-- référent /présent mais en désaccord/ reste un @FAIL@.
+skipIfAbsent :: [String] -> String -> IO Verdict -> IO Verdict
+skipIfAbsent []   _   act = act
+skipIfAbsent exes nom act = do
+  found <- firstAvailable exes
+  case found of
+    Just _  -> act
+    Nothing -> pure (Verdict True
+      ("SKIP " ++ nom ++ "  (référent absent : " ++ intercalate ", " exes ++ ")")
+      Nothing)
 
 -- SNIPPET:oracle-batch-referee
 -- | Le référent par lots : N cas rendus en un seul script — le prélude
@@ -133,9 +162,9 @@ processBatchReferee n exes args prelude sayLine render1 postlude parse1 =
 -- | Borne la taille des lots d'un référent : les scripts restent de
 -- taille raisonnable, les résultats sont recollés dans l'ordre.
 chunked :: Int -> Referee [q] [c] -> Referee [q] [c]
-chunked m (Referee nom call)
+chunked m (Referee nom exes call)
   | m <= 0    = error "chunked : taille de lot non positive"
-  | otherwise = Referee nom go
+  | otherwise = Referee nom exes go
   where
     go [] = pure []
     go qs = let (tete, reste) = splitAt m qs
@@ -144,7 +173,7 @@ chunked m (Referee nom call)
 -- | Le cas seul, retrouvé depuis le lot : le référent unitaire n'est
 -- plus une seconde implémentation, c'est le lot à un élément.
 onSingleton :: Referee [q] [c] -> Referee q c
-onSingleton (Referee nom call) = Referee nom $ \q -> do
+onSingleton (Referee nom exes call) = Referee nom exes $ \q -> do
   cs <- call [q]
   case cs of
     [c] -> pure c
@@ -209,7 +238,17 @@ certProperty d =
 
 -- | Joue un duel certifiant sur @n@ cas.
 runCertDuel :: Show i => Int -> CertDuel i a -> IO Verdict
-runCertDuel n d = runProperty n (certName d) (certProperty d)
+runCertDuel = runCertDuelWith []
+
+-- | Comme 'runCertDuel', mais déclare les exécutables externes que le juge
+-- consultera. Le référent d'un duel certifiant vit /dans son juge/, hors
+-- du type 'CertDuel' ; le coureur ne peut donc pas lire @refExes@ tout
+-- seul. Les passer ici rend le pré-vol 'skipIfAbsent' disponible aussi
+-- pour ce chemin : binaire absent ⇒ @SKIP@ vert. À alimenter par
+-- @refExes@ du référent que le juge appelle.
+runCertDuelWith :: Show i => [String] -> Int -> CertDuel i a -> IO Verdict
+runCertDuelWith exes n d =
+  skipIfAbsent exes (certName d) (runProperty n (certName d) (certProperty d))
 
 -- SNIPPET:oracle-batch-duel
 -- | Le duel par lots : la consultation du référent, enfouie dans le
@@ -237,7 +276,7 @@ data BatchDuel i a q c = BatchDuel
 -- qui lève (squelette du rouge) est un échec du cas, pas du harnais ;
 -- un déficit de réponses du référent est une panne, bruyante.
 runBatchDuel :: (Show i, Show q) => Int -> Referee [q] [c] -> BatchDuel i a q c -> IO Verdict
-runBatchDuel n ref d = borne (batchName d) $ do
+runBatchDuel n ref d = skipIfAbsent (refExes ref) (batchName d) $ borne (batchName d) $ do
   is <- mapM (\k -> generate (resize (k `mod` 100) (batchGenerator d)))
              [0 .. n - 1]
   fails <- judgeBatch ref d is
@@ -323,8 +362,22 @@ data Verdict = Verdict
   , vMinimal :: Maybe [String]
   }
 
--- | Le tour de contrôle de tout duel nommé, trois services :
+-- | Découpe une liste de motifs séparés par des virgules (vide ignoré).
+commaSplit :: String -> [String]
+commaSplit s = filter (not . null) (go s)
+  where
+    go t = case break (== ',') t of
+      (a, [])     -> [a]
+      (a, _ : b)  -> a : go b
+
+-- | Le tour de contrôle de tout duel nommé, quatre services :
 --
+-- * @CAUCHY_ORACLE_SKIP@ (sous-chaînes séparées par des virgules) — tout
+--   duel dont le nom contient l'une d'elles est sauté en vert. Le pendant
+--   /exclusif/ de @CAUCHY_ORACLE_MATCH@ : la CI rapide des PR y déclare les
+--   familles lourdes (p. ex. @cyclic-6,katsura@) ; main ne le pose pas et
+--   joue la suite complète. La couverture exhaustive reste garantie à la
+--   fusion.
 -- * @CAUCHY_ORACLE_MATCH@ (sous-chaîne du nom) — lancer /un/ duel sans payer
 --   la suite ; hors motif, verdict @SKIP@ vert sans exécution. La
 --   suite complète reste l'artefact de jalon et de CI.
@@ -357,24 +410,27 @@ data Verdict = Verdict
 --   localise en une lecture.
 borne :: String -> IO Verdict -> IO Verdict
 borne nom act = do
+  skips <- maybe [] commaSplit <$> lookupEnv "CAUCHY_ORACLE_SKIP"
   motif <- lookupEnv "CAUCHY_ORACLE_MATCH"
-  case motif of
-    Just m | not (m `isInfixOf` nom) ->
-      pure (Verdict True ("SKIP " ++ nom ++ "  (CAUCHY_ORACLE_MATCH)") Nothing)
-    _ -> do
-      budget <- lookupEnv "CAUCHY_ORACLE_DUEL_TIMEOUT"
-      t0 <- getMonotonicTime
-      -- Battement : un item long (cyclic-6 ~130 s) reste muet pendant
-      -- tout son calcul — « inobservable toute sa durée ». Un fil
-      -- annexe tique toutes les 10 s sur stderr (il vit, et depuis
-      -- combien de temps) sans polluer les lignes de verdict parsées
-      -- sur stdout ; le 'finally' le tue avec l'item, quelle qu'en soit
-      -- l'issue. (Le battement tourne même sans -threaded : buchberger
-      -- alloue, le scheduler rend la main aux points d'allocation.)
-      battement <- forkIO (tic t0)
-      v <- garde budget `finally` killThread battement
-      t1 <- getMonotonicTime
-      pure (chronometre (t1 - t0) v)
+  if any (`isInfixOf` nom) skips
+    then pure (Verdict True ("SKIP " ++ nom ++ "  (CAUCHY_ORACLE_SKIP)") Nothing)
+    else case motif of
+      Just m | not (m `isInfixOf` nom) ->
+        pure (Verdict True ("SKIP " ++ nom ++ "  (CAUCHY_ORACLE_MATCH)") Nothing)
+      _ -> do
+        budget <- lookupEnv "CAUCHY_ORACLE_DUEL_TIMEOUT"
+        t0 <- getMonotonicTime
+        -- Battement : un item long (cyclic-6 ~130 s) reste muet pendant
+        -- tout son calcul — « inobservable toute sa durée ». Un fil
+        -- annexe tique toutes les 10 s sur stderr (il vit, et depuis
+        -- combien de temps) sans polluer les lignes de verdict parsées
+        -- sur stdout ; le 'finally' le tue avec l'item, quelle qu'en soit
+        -- l'issue. (Le battement tourne même sans -threaded : buchberger
+        -- alloue, le scheduler rend la main aux points d'allocation.)
+        battement <- forkIO (tic t0)
+        v <- garde budget `finally` killThread battement
+        t1 <- getMonotonicTime
+        pure (chronometre (t1 - t0) v)
   where
     -- La garde de temps : 'timeout' borne le calcul, le dépassement
     -- devient un FAIL nommé. (Limites de 'timeout' : voir le Haddock —
@@ -404,7 +460,8 @@ chronometre d v
 -- | Joue un duel sur @n@ cas.
 runDuel :: (Show i, Show r, Eq r) => Int -> Duel i r -> IO Verdict
 runDuel n d =
-  runProperty n (refName (referee d) ++ " / " ++ duelName d) (duelProperty d)
+  let nom = refName (referee d) ++ " / " ++ duelName d
+  in skipIfAbsent (refExes (referee d)) nom (runProperty n nom (duelProperty d))
 
 -- | Le coureur partagé : @n@ cas, un nom, une propriété — un verdict.
 -- Exporté pour les propriétés déjà empaquetées ailleurs (les batteries

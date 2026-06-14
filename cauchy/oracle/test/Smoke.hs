@@ -54,13 +54,14 @@ main = do
 
   lot <- batchSmoke
   garde <- gardeFouSmoke
+  absent <- absentRefSmoke
   vocab <- vocabSmoke
   singular <- singularSmoke
   putStrLn (vLine singular)
   retour <- singularVocabSmoke
   putStrLn (vLine retour)
 
-  if vPassed honest && detected && shrunk && lot && garde && vocab
+  if vPassed honest && detected && shrunk && lot && garde && absent && vocab
        && vPassed singular && vPassed retour
     then exitSuccess
     else exitFailure
@@ -103,6 +104,28 @@ gardeFouSmoke = do
   putStrLn $ (if saute then "OK   " else "FAIL ")
           ++ "harnais / CAUCHY_ORACLE_MATCH : hors motif, le duel est sauté sans tourner"
   pure (coupe && saute)
+
+-- ---------------------------------------------------------------------
+-- Le référent absent : binaire introuvable ⇒ SKIP vert, pas échec dur.
+-- Le pré-vol 'skipIfAbsent' saute le duel AVANT de lancer l'outil
+-- fantôme ; un référent présent en désaccord reste rouge (le sabotage
+-- ci-dessus en témoigne — la garde ne porte que sur l'absence).
+
+absentRefSmoke :: IO Bool
+absentRefSmoke = do
+  v <- runDuel 1 Duel
+    { duelName  = "référent absent"
+    , generator = pure ()
+    , shrinker  = const []
+    , candidate = const ("0" :: String)
+    , referee   = processReferee "outil fantôme"
+                    ["cauchy-aucun-tel-binaire-xyz"] [] (const "") Right
+    }
+  let saute = vPassed v && "SKIP" `isInfixOf` vLine v
+              && "référent absent" `isInfixOf` vLine v
+  putStrLn $ (if saute then "OK   " else "FAIL ")
+          ++ "harnais / référent absent : binaire introuvable ⇒ SKIP vert nommé"
+  pure saute
 
 -- ---------------------------------------------------------------------
 -- Le duel par lots.

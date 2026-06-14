@@ -1,0 +1,150 @@
+cabal-version:      3.4
+name:               cauchy
+version:            0.1.0.0
+synopsis:           Cauchy products over a semiring: polynomials, languages, orders, Gröbner bases
+description:        The cauchy collection (phases 1–4) as a single package:
+                    univariate polynomials and lazy power series, languages and
+                    weighted automata, monomial orders on N^k, and Gröbner bases
+                    — all as the Cauchy product f*g over the monoid semiring,
+                    generic in the semiring S. Built on monoid-semiring (phase
+                    0); the fast backends (phase 5) are the separate package
+                    cauchy-backends. The differential-testing harness is the
+                    public sub-library cauchy:oracle.
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             nrolland
+maintainer:         untruth.51-room@icloud.com
+homepage:           https://github.com/nrolland/cauchy-haskell
+bug-reports:        https://github.com/nrolland/cauchy-haskell/issues
+build-type:         Simple
+category:           Math
+tested-with:        GHC ==9.12.4
+
+source-repository head
+  type:     git
+  location: https://github.com/nrolland/cauchy-haskell
+  subdir:   cauchy
+
+library
+  exposed-modules:  Data.Cauchy.Groebner,
+                    Data.Cauchy.Language.Poly,
+                    Data.Cauchy.Language.Rational,
+                    Data.Cauchy.Language.Series,
+                    Data.Cauchy.Language.Weighted,
+                    Data.Cauchy.Multi,
+                    Data.Cauchy.Order,
+                    Data.Cauchy.Poly,
+                    Data.Cauchy.Series
+  hs-source-dirs:   order/src poly/src language/src groebner/src
+  build-depends:    base >=4.14 && <5,
+                    containers >=0.6 && <0.8,
+                    finite-typelits >=0.1 && <0.3,
+                    free >=5.2 && <5.3,
+                    infinite-list >=0.1 && <0.2,
+                    monoid-semiring,
+                    semirings >=0.7 && <0.8,
+                    vector-sized >=1.6 && <1.7
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+-- Le harnais différentiel, sous-bibliothèque publique : les test-suites de
+-- cauchy la voient en interne, celle de cauchy-backends via cauchy:oracle.
+-- Source unique, pas d'upload séparé, pas de duplication.
+library oracle
+  visibility:       public
+  exposed-modules:  Test.Cauchy.Oracle,
+                    Test.Cauchy.Singular
+  hs-source-dirs:   oracle/src
+  build-depends:    base >=4.14 && <5,
+                    QuickCheck >=2.14,
+                    containers,
+                    process >=1.6,
+                    directory >=1.3
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite order-duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  hs-source-dirs:   order/test
+  build-depends:    base,
+                    cauchy,
+                    cauchy:oracle,
+                    QuickCheck >=2.14,
+                    quickcheck-classes-base >=0.6
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite poly-duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  other-modules:    Showcase
+  hs-source-dirs:   poly/test
+  build-depends:    base,
+                    cauchy,
+                    cauchy:oracle,
+                    QuickCheck >=2.14,
+                    semirings,
+                    poly >=0.5,
+                    mod,
+                    vector
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite poly-multi-duels
+  type:             exitcode-stdio-1.0
+  main-is:          MultiDuels.hs
+  other-modules:    MultiShowcase,
+                    SingularRef
+  hs-source-dirs:   poly/test
+  build-depends:    base,
+                    cauchy,
+                    cauchy:oracle,
+                    containers,
+                    QuickCheck >=2.14,
+                    semirings,
+                    mod
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded
+
+test-suite language-duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  other-modules:    Showcase
+  hs-source-dirs:   language/test
+  build-depends:    base,
+                    cauchy,
+                    cauchy:oracle,
+                    QuickCheck >=2.14,
+                    regex-applicative >=0.3 && <0.4,
+                    semirings
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+test-suite groebner-duels
+  type:             exitcode-stdio-1.0
+  main-is:          Duels.hs
+  other-modules:    SingularGroebner,
+                    Showcase
+  hs-source-dirs:   groebner/test
+  build-depends:    base,
+                    cauchy,
+                    cauchy:oracle,
+                    containers,
+                    process,
+                    QuickCheck >=2.14,
+                    semirings
+  default-language: Haskell2010
+  -- -threaded : le filet CAUCHY_ORACLE_DUEL_TIMEOUT ne peut interrompre un
+  -- Singular pendu (appel étranger) que sous le RTS fileté.
+  ghc-options:      -Wall -threaded
+
+test-suite oracle-smoke
+  type:             exitcode-stdio-1.0
+  main-is:          Smoke.hs
+  hs-source-dirs:   oracle/test
+  build-depends:    base,
+                    cauchy:oracle,
+                    QuickCheck
+  default-language: Haskell2010
+  ghc-options:      -Wall

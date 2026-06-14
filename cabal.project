@@ -1,2 +1,4 @@
-packages: */
+packages: monoid-semiring/
+          cauchy/
+          cauchy-backends/
 tests: True

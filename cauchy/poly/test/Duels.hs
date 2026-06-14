@@ -213,7 +213,7 @@ readBFile fp = do
          , (n : a : _) <- [words l] ]
 
 oeisReferee :: String -> FilePath -> Int -> Referee Int [Integer]
-oeisReferee nm fp fromN = Referee nm $ \k ->
+oeisReferee nm fp fromN = Referee nm [] $ \k ->
   take k . map snd . filter ((>= fromN) . fst) <$> readBFile fp
 
 genLen :: Gen Int

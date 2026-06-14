@@ -8,6 +8,7 @@ module Exports () where
 import GHC.Wasm.Prim
 
 import WidgetData
+import qualified BackendsWidgets
 import qualified GroebnerWidgets
 import qualified MultiWidgets
 import qualified SeriesWidgets
@@ -93,3 +94,25 @@ foreign export javascript "groebnerCut"
 
 groebnerCut :: Int -> JSString
 groebnerCut n = toJSString (GroebnerWidgets.cutJson n)
+
+-- Vitrine des backends rapides (cauchy-backends) : les deux chemins de la
+-- transformée sur 𝔽₁₇, le gold de convolveZ par restes chinois, et la base
+-- réduite de F4 — calculés par la bibliothèque.
+
+foreign export javascript "backendsConvolve"
+  backendsConvolve :: Int -> JSString
+
+backendsConvolve :: Int -> JSString
+backendsConvolve n = toJSString (BackendsWidgets.convolveJson n)
+
+foreign export javascript "backendsConvolveZ"
+  backendsConvolveZ :: Int -> JSString
+
+backendsConvolveZ :: Int -> JSString
+backendsConvolveZ n = toJSString (BackendsWidgets.convolveZJson n)
+
+foreign export javascript "backendsF4"
+  backendsF4 :: Int -> JSString
+
+backendsF4 :: Int -> JSString
+backendsF4 n = toJSString (BackendsWidgets.f4Json n)

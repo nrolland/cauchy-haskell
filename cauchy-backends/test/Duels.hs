@@ -52,7 +52,7 @@ import System.Exit (exitFailure)
 import Test.Cauchy.Oracle
   (BatchDuel (..), CertDuel (..), Duel (..), Referee (..), Verdict (..),
    chunked, lawDuel, processBatchReferee, pureReferee, runBatchDuel,
-   runCertDuel, runDuel, runSuite)
+   runCertDuel, runCertDuelWith, runDuel, runSuite)
 import Test.QuickCheck
 
 import Data.Semiring (Semiring (..))
@@ -65,6 +65,7 @@ import Data.Cauchy.Order (GrLex (..), GrevLex (..), Lex (..),
 import Data.Cauchy.Poly (fromCoeffs, toCoeffs)
 
 import SingularGroebner (TermL, familyRef, normalizeT, stdRedSBRefN)
+import Showcase (arithmetiqueOr, compteOr, f4Or, transformeeOr)
 
 -- ---------------------------------------------------------------------
 -- Le porteur des transformées : ℤ/m via 'Data.Mod' (paquet 'mod', adopté
@@ -520,7 +521,7 @@ decisiveF4Duel nom wrap = BatchDuel
 -- retranscrites), grevlex — la base de F4 contre std·redSB.
 f4FamilleDuel :: forall k. KnownNat k => Proxy k -> String -> IO Verdict
 f4FamilleDuel pk name =
-  runCertDuel 1 $ CertDuel
+  runCertDuelWith (refExes (familyRef name n "dp")) 1 $ CertDuel
     { certName      = "④ duel décisif F4 : " ++ name ++ "-" ++ show n
                         ++ " (grevlex), F4 contre std·redSB"
     , certGenerator = pure ()
@@ -536,6 +537,57 @@ f4FamilleDuel pk name =
   where
     n = fromIntegral (natVal pk) :: Int
     wrap = GrevLex . expo :: [Natural] -> GrevLex k
+
+-- ---------------------------------------------------------------------
+-- ⑤⑥ vitrine : les quatre calculs d'or des pages, jugés purs contre
+-- leur déroulé à la main (le snippet affiché EST ce code).
+
+-- ① le chemin transformé sur 𝔽₁₇ : (1+x)(1+2x) = 1 + 3x + 2x².
+vitrineTransformeeDuel :: Duel () [Mod 17]
+vitrineTransformeeDuel = Duel
+  { duelName  = "vitrine ① : (1+x)(1+2x) sur 𝔽₁₇ par le chemin transformé = [1,3,2] (convolution naïve)"
+  , generator = pure ()
+  , shrinker  = const []
+  , candidate = \() -> transformeeOr
+  , referee   = pureReferee "déroulé à la main : 1 + 3x + 2x²" (const [1, 3, 2])
+  }
+
+-- ② le compte exact, pour n ∈ {2,4,8,16} : forme close depuis les défs.
+vitrineCompteDuel :: Duel () [(Int, Counts)]
+vitrineCompteDuel = Duel
+  { duelName  = "vitrine ② : nttCount n = ((n/2)·log₂n produits, n·log₂n sommes), n ∈ {2,4,8,16}"
+  , generator = pure ()
+  , shrinker  = const []
+  , candidate = \() -> compteOr
+  , referee   = pureReferee "forme close depuis les définitions"
+      (const [ (n, Counts ((n `div` 2) * ilog2 n) (n * ilog2 n)) | n <- [2, 4, 8, 16] ])
+  }
+
+-- ③ ℤ par restes chinois au-delà de l'entier machine : 3·10²⁰ > 2⁶³.
+vitrineArithmetiqueDuel :: Duel () (Either BoundError [Integer])
+vitrineArithmetiqueDuel = Duel
+  { duelName  = "vitrine ③ : convolveZ (10⁶+10⁶x+10⁶x²)² exact, coefficient central 3·10¹² > ℓ_max ≈ 10⁹"
+  , generator = pure ()
+  , shrinker  = const []
+  , candidate = \() -> arithmetiqueOr
+  , referee   = pureReferee "convolution entière naïve (déroulé à la main)"
+      (const (Right (naiveIntConv gros gros)))
+  }
+  where gros = replicate 3 (10 ^ (6 :: Int))
+
+-- ④ l'arc Gröbner par échelonnage : f4 ⟨xy−1, y²−1⟩ = {y²−1, x−y}.
+vitrineF4Duel :: Duel () [TermL]
+vitrineF4Duel = Duel
+  { duelName  = "vitrine ④ : f4 ⟨xy−1, y²−1⟩ = {y²−1, x−y} (l'arc Gröbner par échelonnage, lex x≻y)"
+  , generator = pure ()
+  , shrinker  = const []
+  , candidate = \() -> normalSet f4Or
+  , referee   = pureReferee "base réduite de Buchberger sur le même idéal (volet 4)"
+      (const (normalSet (reduce (buchberger [arc1, arc2]))))
+  }
+  where
+    arc1 = mk lex2 [([1, 1], 1), ([0, 0], -1)]   -- xy − 1
+    arc2 = mk lex2 [([0, 2], 1), ([0, 0], -1)]   -- y² − 1
 
 -- ---------------------------------------------------------------------
 
@@ -586,6 +638,10 @@ main = do
        ]
     ++ [ f4VsBuchFpDuel "lex" lex2, f4VsBuchFpDuel "grlex" grl2
        , f4VsBuchFpDuel "grevlex" grv2
+       ]
+    -- ⑤⑥ vitrine : les calculs d'or des pages, jugés purs
+    ++ [ runDuel 1 vitrineTransformeeDuel, runDuel 1 vitrineCompteDuel
+       , runDuel 1 vitrineArithmetiqueDuel, runDuel 1 vitrineF4Duel
        ]
     -- les externes (gardés)
     ++ numped
