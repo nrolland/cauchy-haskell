@@ -41,7 +41,7 @@ library
                     finite-typelits >=0.1 && <0.3,
                     free >=5.2 && <5.3,
                     infinite-list >=0.1 && <0.2,
-                    monoid-semiring,
+                    monoid-semiring >=0.1 && <0.2,
                     semirings >=0.7 && <0.8,
                     vector-sized >=1.6 && <1.7
   default-language: Haskell2010
@@ -56,10 +56,10 @@ library oracle
                     Test.Cauchy.Singular
   hs-source-dirs:   oracle/src
   build-depends:    base >=4.14 && <5,
-                    QuickCheck >=2.14,
-                    containers,
-                    process >=1.6,
-                    directory >=1.3
+                    QuickCheck >=2.14 && <2.19,
+                    containers >=0.6 && <0.8,
+                    process >=1.6 && <1.7,
+                    directory >=1.3 && <1.4
   default-language: Haskell2010
   ghc-options:      -Wall
 
@@ -67,11 +67,11 @@ test-suite order-duels
   type:             exitcode-stdio-1.0
   main-is:          Duels.hs
   hs-source-dirs:   order/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy,
                     cauchy:oracle,
-                    QuickCheck >=2.14,
-                    quickcheck-classes-base >=0.6
+                    QuickCheck >=2.14 && <2.19,
+                    quickcheck-classes-base >=0.6 && <0.7
   default-language: Haskell2010
   ghc-options:      -Wall
 
@@ -80,14 +80,14 @@ test-suite poly-duels
   main-is:          Duels.hs
   other-modules:    Showcase
   hs-source-dirs:   poly/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy,
                     cauchy:oracle,
-                    QuickCheck >=2.14,
-                    semirings,
-                    poly >=0.5,
-                    mod,
-                    vector
+                    QuickCheck >=2.14 && <2.19,
+                    semirings >=0.7 && <0.8,
+                    poly >=0.5 && <0.6,
+                    mod >=0.2 && <0.3,
+                    vector >=0.13 && <0.14
   default-language: Haskell2010
   ghc-options:      -Wall
 
@@ -97,13 +97,13 @@ test-suite poly-multi-duels
   other-modules:    MultiShowcase,
                     SingularRef
   hs-source-dirs:   poly/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy,
                     cauchy:oracle,
-                    containers,
-                    QuickCheck >=2.14,
-                    semirings,
-                    mod
+                    containers >=0.6 && <0.8,
+                    QuickCheck >=2.14 && <2.19,
+                    semirings >=0.7 && <0.8,
+                    mod >=0.2 && <0.3
   default-language: Haskell2010
   ghc-options:      -Wall -threaded
 
@@ -112,12 +112,12 @@ test-suite language-duels
   main-is:          Duels.hs
   other-modules:    Showcase
   hs-source-dirs:   language/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy,
                     cauchy:oracle,
-                    QuickCheck >=2.14,
+                    QuickCheck >=2.14 && <2.19,
                     regex-applicative >=0.3 && <0.4,
-                    semirings
+                    semirings >=0.7 && <0.8
   default-language: Haskell2010
   ghc-options:      -Wall
 
@@ -127,13 +127,13 @@ test-suite groebner-duels
   other-modules:    SingularGroebner,
                     Showcase
   hs-source-dirs:   groebner/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy,
                     cauchy:oracle,
-                    containers,
-                    process,
-                    QuickCheck >=2.14,
-                    semirings
+                    containers >=0.6 && <0.8,
+                    process >=1.6 && <1.7,
+                    QuickCheck >=2.14 && <2.19,
+                    semirings >=0.7 && <0.8
   default-language: Haskell2010
   -- -threaded : le filet CAUCHY_ORACLE_DUEL_TIMEOUT ne peut interrompre un
   -- Singular pendu (appel étranger) que sous le RTS fileté.
@@ -143,8 +143,8 @@ test-suite oracle-smoke
   type:             exitcode-stdio-1.0
   main-is:          Smoke.hs
   hs-source-dirs:   oracle/test
-  build-depends:    base,
+  build-depends:    base >=4.14 && <5,
                     cauchy:oracle,
-                    QuickCheck
+                    QuickCheck >=2.14 && <2.19
   default-language: Haskell2010
   ghc-options:      -Wall

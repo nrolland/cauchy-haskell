@@ -29,8 +29,8 @@ library
   hs-source-dirs:   src
   build-depends:    base >=4.14 && <5,
                     -- volets 1–4 fondus dans cauchy (reduce ④, Order/Poly).
-                    cauchy,
-                    containers,
+                    cauchy >=0.1 && <0.2,
+                    containers >=0.6 && <0.8,
                     -- ③ : ℤ/ℓ à modulo typé ; invertMod (total) donne ω⁻¹, n⁻¹.
                     mod >=0.2 && <0.3,
                     semirings >=0.7 && <0.8
@@ -40,20 +40,24 @@ library
 test-suite duels
   type:             exitcode-stdio-1.0
   main-is:          Duels.hs
-  -- SingularGroebner réutilisé tel quel depuis le volet 4 (désormais sous
-  -- cauchy/groebner/test) : le duel décisif rejoué avec F4, zéro ligne neuve.
+  -- SingularGroebner réutilisé tel quel depuis le volet 4 : le duel décisif
+  -- rejoué avec F4, zéro ligne neuve. Copié dans test/ par fuse.mjs pour que
+  -- le tarball sdist soit autonome (Hackage interdit un hs-source-dirs hors
+  -- paquet) ; la source unique reste cauchy/groebner/test. Showcase (⑤⑥) est
+  -- natif de test/ : à lister pour qu'il entre dans le tarball sdist.
   other-modules:    SingularGroebner
-  hs-source-dirs:   test, ../cauchy/groebner/test
-  build-depends:    base,
+                    Showcase
+  hs-source-dirs:   test
+  build-depends:    base >=4.14 && <5,
                     cauchy-backends,
-                    cauchy,
+                    cauchy >=0.1 && <0.2,
                     cauchy:oracle,
-                    containers,
+                    containers >=0.6 && <0.8,
                     -- ① ② porteur ℤ/m du harnais : Mod 17 / Mod 15.
                     mod >=0.2 && <0.3,
-                    process,
-                    QuickCheck >=2.14,
-                    semirings
+                    process >=1.6 && <1.7,
+                    QuickCheck >=2.14 && <2.19,
+                    semirings >=0.7 && <0.8
   default-language: Haskell2010
   -- -threaded : le duel décisif de ④ rejoue Singular (FFI) ; le filet
   -- CAUCHY_ORACLE_DUEL_TIMEOUT exige le RTS fileté pour interrompre un
