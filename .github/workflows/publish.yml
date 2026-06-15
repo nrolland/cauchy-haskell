@@ -4,6 +4,12 @@ name: build
 # Déposée par fuse.mjs au moment de la publication ; jamais éditée à la main
 # dans le dépôt public. Prouve que la forme publiée build et teste vert, et
 # sert de détecteur de dérive des gabarits.
+#
+# Produit aussi, en sortie du run vert, les 3 tarballs sdist comme artefact
+# « hackage-sdist ». Ces tarballs SONT les octets que ce run a compilés et
+# testés — pas une re-dérivation locale. Pour publier : récupérer l'artefact
+# (page du run, ou `gh run download -R nrolland/cauchy-haskell -n hackage-sdist`)
+# puis `cabal upload` à la main (identifiants Hackage, geste irréversible).
 
 on: [push, pull_request]
 
@@ -46,3 +52,14 @@ jobs:
         run: |
           cabal freeze
           node check-bounds.mjs . cabal.project.freeze
+
+      # Tarballs Hackage en sortie du run vert : ce sont les octets testés
+      # ci-dessus. `cabal sdist all` assemble les 3 (et rejette tout chemin
+      # hors paquet, comme le ferait Hackage). Aucun upload ici — geste manuel.
+      - name: sdist — 3 tarballs Hackage
+        run: cabal sdist all --output-dir sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hackage-sdist
+          path: sdist/*.tar.gz
+          if-no-files-found: error
