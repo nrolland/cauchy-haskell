@@ -18,10 +18,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y singular python3-numpy
 
+      # La version GHC n'est pas codée en dur : on la lit de tested-with (source
+      # unique). Le plan résolu correspond alors aux versions que les bornes
+      # promettent, et le check des plafonds (ci-dessous) compare au vrai testé.
+      - name: GHC = tested-with
+        id: ghc
+        run: echo "v=$(grep -hoE 'GHC *== *[0-9.]+' cauchy/cauchy.cabal | grep -oE '[0-9.]+' | head -1)" >> "$GITHUB_OUTPUT"
+
       - uses: haskell-actions/setup@v2
         with:
-          ghc-version: '9.6'
-          cabal-version: '3.12'
+          ghc-version: ${{ steps.ghc.outputs.v }}
+          cabal-version: '3.14'
 
       - name: Build + test (3 paquets)
         env:
@@ -31,3 +38,11 @@ jobs:
           cabal update
           cabal build all
           cabal test all --test-show-details=direct
+
+      # Filet des bornes contre le plan réellement résolu : plafonds = testé
+      # (la couche « valeur » de PVP — le geste de gen-bounds, automatisé). Le
+      # freeze fige les versions résolues ; node est fourni par le runner.
+      - name: Bornes — plafonds vs testé
+        run: |
+          cabal freeze
+          node check-bounds.mjs . cabal.project.freeze
